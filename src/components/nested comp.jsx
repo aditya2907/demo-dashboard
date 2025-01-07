@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  Drawer,
   List,
   ListItem,
   ListItemButton,
@@ -10,7 +11,6 @@ import {
   Box,
 } from "@mui/material";
 import { ExpandLess, ExpandMore, Folder, FolderOpen } from "@mui/icons-material";
-import { NavLink } from "react-router-dom";
 
 const NestedList = ({ data, level = 0, maxDepth = 5, onOpenTab }) => {
   const [open, setOpen] = useState({});
@@ -24,10 +24,9 @@ const NestedList = ({ data, level = 0, maxDepth = 5, onOpenTab }) => {
       {data.map((item, index) => (
         <div key={index}>
           <ListItem disablePadding sx={{ pl: level * 2 }}>
-            {level === maxDepth - 2 ? ( // Handle the most inner level
-              <ListItemButton
-                onClick={() => onOpenTab(item)} // Trigger tab opening with item data
-              >
+            {level === maxDepth - 2 ? (
+              // Handle inner-most level to open a tab
+              <ListItemButton onClick={() => onOpenTab(item)}>
                 <Folder sx={{ marginRight: 1 }} />
                 <ListItemText primary={item.label} />
               </ListItemButton>
@@ -56,7 +55,7 @@ const NestedList = ({ data, level = 0, maxDepth = 5, onOpenTab }) => {
                 data={item.children}
                 level={level + 1}
                 maxDepth={maxDepth}
-                onOpenTab={onOpenTab} // Pass the callback down to inner components
+                onOpenTab={onOpenTab}
               />
             </Collapse>
           )}
@@ -99,44 +98,57 @@ export default function App() {
     },
   ];
 
-  // Callback to handle tab opening
+  // Callback to handle opening a tab
   const handleOpenTab = (item) => {
     setTabContent((prevContent) => [...prevContent, item]);
     setTabValue(tabContent.length); // Automatically focus on the new tab
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
-      {/* Nested List */}
-      <NestedList
-        data={nestedData}
-        maxDepth={5}
-        onOpenTab={handleOpenTab} // Pass the callback
-      />
-
-      {/* Tabs */}
-      <Tabs
-        value={tabValue}
-        onChange={(event, newValue) => setTabValue(newValue)}
-        variant="scrollable"
-        scrollButtons
-        allowScrollButtonsMobile
+    <Box sx={{ display: "flex", height: "100vh" }}>
+      {/* Drawer for Nested List */}
+      <Drawer
+        variant="permanent"
+        anchor="left"
+        sx={{
+          width: 240,
+          flexShrink: 0,
+          [`& .MuiDrawer-paper`]: { width: 240, boxSizing: "border-box" },
+        }}
       >
-        {tabContent.map((tab, index) => (
-          <Tab key={index} label={tab.label} />
-        ))}
-      </Tabs>
+        <Box sx={{ overflow: "auto" }}>
+          <NestedList
+            data={nestedData}
+            maxDepth={5}
+            onOpenTab={handleOpenTab} // Pass callback to open tabs
+          />
+        </Box>
+      </Drawer>
 
-      {/* Tab Content */}
-      <Box sx={{ mt: 2, p: 2, border: "1px solid #ccc" }}>
-        {tabContent.length > 0 && tabContent[tabValue] && (
-          <div>
-            <h3>{tabContent[tabValue].label}</h3>
-            {tabContent[tabValue].path && (
-              <p>Path: {tabContent[tabValue].path}</p>
-            )}
-          </div>
-        )}
+      {/* Main Content Area for Tabs */}
+      <Box sx={{ flexGrow: 1, p: 3 }}>
+        <Tabs
+          value={tabValue}
+          onChange={(event, newValue) => setTabValue(newValue)}
+          variant="scrollable"
+          scrollButtons
+          allowScrollButtonsMobile
+        >
+          {tabContent.map((tab, index) => (
+            <Tab key={index} label={tab.label} />
+          ))}
+        </Tabs>
+
+        <Box sx={{ mt: 2, p: 2, border: "1px solid #ccc" }}>
+          {tabContent.length > 0 && tabContent[tabValue] && (
+            <div>
+              <h3>{tabContent[tabValue].label}</h3>
+              {tabContent[tabValue].path && (
+                <p>Path: {tabContent[tabValue].path}</p>
+              )}
+            </div>
+          )}
+        </Box>
       </Box>
     </Box>
   );
