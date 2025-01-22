@@ -3,18 +3,11 @@ import DrawerPanel from './DrawerPanel';
 import MainContent from './MainContent';
 
 const App = () => {
-  const reportsData = [
-    { id: 'report1', name: 'Sales Report', content: 'Content for Sales Report' },
-    { id: 'report2', name: 'Inventory Report', content: 'Content for Inventory Report' },
-    { id: 'report3', name: 'Customer Report', content: 'Content for Customer Report' },
-  ];
-
   const [tabs, setTabs] = useState([]);
 
-  const handleOpenReport = (report) => {
-    // Prevent duplicate tabs
-    if (!tabs.some((tab) => tab.id === report.id)) {
-      setTabs((prevTabs) => [...prevTabs, report]);
+  const handleOpenTab = (tabName) => {
+    if (!tabs.includes(tabName)) {
+      setTabs((prevTabs) => [...prevTabs, tabName]);
     }
   };
 
@@ -22,9 +15,24 @@ const App = () => {
     setTabs((prevTabs) => prevTabs.filter((_, i) => i !== index));
   };
 
+  const nestedData = [
+    {
+      label: 'Dashboard 1',
+      children: [
+        { label: 'Sub-Dashboard 1.1' },
+        { label: 'Sub-Dashboard 1.2' },
+      ],
+    },
+    {
+      label: 'Dashboard 2',
+      children: [{ label: 'Sub-Dashboard 2.1' }],
+    },
+    { label: 'Dashboard 3' },
+  ];
+
   return (
     <div style={{ display: 'flex' }}>
-      <DrawerPanel reports={reportsData} onOpenReport={handleOpenReport} />
+      <DrawerPanel data={nestedData} onOpenTab={handleOpenTab} />
       <MainContent tabs={tabs} onCloseTab={handleCloseTab} />
     </div>
   );
