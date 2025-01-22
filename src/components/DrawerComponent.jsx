@@ -1,7 +1,8 @@
 import React from 'react';
-import { Drawer, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
+import { Drawer } from '@mui/material';
+import NestedList from './NestedList';
 
-const DrawerPanel = ({ reports, onOpenReport }) => {
+const DrawerPanel = ({ data, onOpenTab }) => {
   return (
     <Drawer
       variant="permanent"
@@ -12,15 +13,7 @@ const DrawerPanel = ({ reports, onOpenReport }) => {
         [`& .MuiDrawer-paper`]: { width: 240, boxSizing: 'border-box' },
       }}
     >
-      <List>
-        {reports.map((report) => (
-          <ListItem key={report.id} disablePadding>
-            <ListItemButton onClick={() => onOpenReport(report)}>
-              <ListItemText primary={report.name} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
+      <NestedList data={data} onOpenTab={onOpenTab} />
     </Drawer>
   );
 };
