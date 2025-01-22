@@ -1,15 +1,18 @@
+import { createSlice } from '@reduxjs/toolkit';
 
-const aboutTableData = {
-    title: 'About Table',
-    columnDefs: [
-        { headerName: 'id', field: 'id' },
-        { headerName: 'Detail', field: 'detail' },
-        { headerName: 'Value', field: 'value' }
-    ],
-    rowData: [
-        { id:1, detail: 'Founder', value: 'John Doe' },
-        { id:2, detail: 'Established', value: '2024' },
-    ]
+const initialState = {
+  activeTab: 0, // Default selected tab
 };
 
-export default aboutTableData;
+const verticalTabSlice = createSlice({
+  name: 'verticalTab',
+  initialState,
+  reducers: {
+    setActiveTab: (state, action) => {
+      state.activeTab = action.payload;
+    },
+  },
+});
+
+export const { setActiveTab } = verticalTabSlice.actions;
+export default verticalTabSlice.reducer;
