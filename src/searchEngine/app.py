@@ -1,85 +1,85 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import pyodbc
-from fuzzywuzzy import fuzz
+import math
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for React frontend
 
-# Configure database connection
+# Database connection setup
 DB_CONFIG = {
-    "server": "your_server_name",
-    "database": "your_database_name",
-    "username": "your_username",
-    "password": "your_password"
+    'server': 'YOUR_SERVER_NAME',
+    'database': 'YOUR_DATABASE_NAME',
+    'username': 'YOUR_USERNAME',
+    'password': 'YOUR_PASSWORD'
 }
 
 def get_db_connection():
-    conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={DB_CONFIG['server']};DATABASE={DB_CONFIG['database']};UID={DB_CONFIG['username']};PWD={DB_CONFIG['password']}"
-    return pyodbc.connect(conn_str)
+    conn = pyodbc.connect(
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={DB_CONFIG['server']};"
+        f"DATABASE={DB_CONFIG['database']};"
+        f"UID={DB_CONFIG['username']};"
+        f"PWD={DB_CONFIG['password']}"
+    )
+    return conn
 
-def get_all_tables_and_columns():
-    """Fetch all tables and their columns in the database."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    query = """
-        SELECT TABLE_NAME, COLUMN_NAME
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = 'dbo'
-    """
-    cursor.execute(query)
-    results = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return [{"table": row[0], "column": row[1]} for row in results]
+# Define table-column mapping
+TABLES_TO_SEARCH = {
+    'Table1': ['Column1', 'Column2'],
+    'Table2': ['Column3', 'Column4'],
+    'Table3': ['Column5']
+}
 
-@app.route('/search', methods=['POST'])
-def search_database():
-    """Search a keyword across all tables and columns in the database."""
+@app.route('/search', methods=['GET'])
+def search():
+    query = request.args.get('query', '')  # Get the search query
+    page = int(request.args.get('page', 1))  # Pagination: current page
+    per_page = int(request.args.get('per_page', 10))  # Results per page
+
+    if not query:
+        return jsonify({'error': 'No search query provided'}), 400
+
     try:
-        data = request.json
-        keyword = data.get("query", "")
-
-        if not keyword:
-            return jsonify({"error": "Query parameter is required"}), 400
-
-        # Get schema details
-        schema = get_all_tables_and_columns()
         conn = get_db_connection()
         cursor = conn.cursor()
 
         results = []
-        for entry in schema:
-            table, column = entry['table'], entry['column']
-            try:
-                # Dynamic query for each column
-                query = f"SELECT '{table}' AS TableName, '{column}' AS ColumnName, {column} AS Value FROM {table} WHERE CAST({column} AS NVARCHAR(MAX)) LIKE ?"
-                cursor.execute(query, f"%{keyword}%")
-                matches = cursor.fetchall()
-                for match in matches:
-                    results.append({
-                        "table": match[0],
-                        "column": match[1],
-                        "value": match[2]
-                    })
-            except Exception as e:
-                # Ignore tables/columns that cause errors (e.g., permissions, incompatible types)
-                continue
+        total_count = 0
 
-        # Optional: Fuzzy match ranking
-        if not results:
-            all_values = [{"table": entry['table'], "column": entry['column'], "value": row[0]}
-                          for entry in schema
-                          for row in cursor.execute(f"SELECT {entry['column']} FROM {entry['table']}")]
-            results = [
-                result for result in all_values if fuzz.partial_ratio(keyword.lower(), str(result["value"]).lower()) > 70
-            ]
+        for table, columns in TABLES_TO_SEARCH.items():
+            # Build dynamic SQL query for each table
+            where_clause = " OR ".join([f"{col} LIKE ?" for col in columns])
+            sql_query = f"SELECT * FROM {table} WHERE {where_clause}"
 
-        return jsonify(results)
+            # Execute query
+            cursor.execute(sql_query, *[f"%{query}%" for _ in columns])
+            rows = cursor.fetchall()
 
-    except Exception as e:
-        return jsonify({"error": str(e)})
-    finally:
+            # Add results with table name as metadata
+            for row in rows:
+                results.append({
+                    'table': table,
+                    **dict(zip([column[0] for column in cursor.description], row))
+                })
+
+        # Pagination logic
+        total_count = len(results)
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+        paginated_results = results[start_index:end_index]
+
         cursor.close()
         conn.close()
 
-if __name__ == "__main__":
+        return jsonify({
+            'results': paginated_results,
+            'total': total_count,
+            'page': page,
+            'pages': math.ceil(total_count / per_page)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
     app.run(debug=True)
